@@ -87,19 +87,24 @@ spec:
           value: {{ .Values.topics | quote }}
 
         ##KCQL routing  
-        - name: CONNECTOR_INFLUX_CONNECTION_URL
+        - name: CONNECTOR_CONNECT_INFLUX_CONNECTION_URL
           value: {{ .Values.connectInfluxConnectionUrl | quote }}
-        - name: CONNECTOR_INFLUX_CONNECTION_DATABASE
+        - name: CONNECTOR_CONNECT_INFLUX_CONNECTION_DATABASE
           value: {{ .Values.connectInfluxConnectionDatabase | quote }}
-        - name: CONNECTOR_INFLUX_CONNECTION_DATABASE
+        - name: CONNECTOR_CONNECT_INFLUX_CONNECTION_USER
           value: {{ .Values.connectInfluxConnectionUser | quote }}
-        - name: CONNECTOR_INFLUX_RETENTION_POLICY
+        - name: CONNECTOR_CONNECT_INFLUX_CONNECTION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretsRef }}
+              key: {{ .Values.connectInfluxConnectionPasswordKey }}
+        - name: CONNECTOR_CONNECT_INFLUX_RETENTION_POLICY
           value: {{ .Values.connectInfluxRetentionPolicy | quote }}          
-        - name: CONNECTOR_INFLUX_CONSISTENCY_LEVEL
+        - name: CONNECTOR_CONNECT_INFLUX_CONSISTENCY_LEVEL
           value: {{ .Values.connectInfluxConsistencyLevel | quote }}    
 
         #KCQL
-        - name: CONNECTOR_INFLUX_SINK_KCQL
+        - name: CONNECTOR_CONNECT_INFLUX_SINK_KCQL
           value: {{ .Values.connectInfluxSinkKcql | quote }}    
 
         
