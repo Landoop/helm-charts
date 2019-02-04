@@ -7,7 +7,8 @@ set -o pipefail
 FILES=$(find . -type f -name 'coyote.yml')
 
 for f in $FILES; do 
-    printf $f
+    echo "----------$f----------"
+    echo "----------------------"
     cd $(dirname $f)
     coyote
     cd ../../

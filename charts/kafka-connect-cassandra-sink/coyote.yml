@@ -35,14 +35,14 @@
         CREATE KEYSPACE test WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};
         use test;
         create table orders (id int, created varchar, product varchar, qty int, price float, PRIMARY KEY (id, created)) WITH CLUSTERING ORDER BY (created asc);
-      timeout: 5s
+      timeout: 30s
 
 - name: Deploy Helm Cassandra Sink Distributed Connector
   entries:   
     - name: Run helm chart
       command: > 
         helm install -f ci/values.yaml .
-    - command: sleep 80
+    - command: sleep 100
       nolog: true
 
 - name: Test Cassandra Sink Connector
@@ -59,15 +59,15 @@
     - command: sleep 60
       nolog: true
     - name: Verify entries
-      command: >
+      command: >-
         bash -c '
-          POD=`kubectl get pods -l=app=test-kafka-connect-cassandra -o jsonpath='{.items[0].metadata.name}'`
+          POD=`%POD_NAME%`
           kubectl exec -i $POD -c cassandra -- cqlsh --username cassandra --password cassandra'
       stdout_has: [ 'OP-DAX-P-20150201-95.7', 'OP-DAX-C-20150201-100', 'FU-DATAMOUNTAINEER-20150201-100', 'FU-KOSPI-C-20150201-100' ]
       stdin: |
         use test;
         SELECT * FROM orders;
-      timeout: 10s
+      timeout: 30s
 
 - name: Cleanup K8
   entries:   

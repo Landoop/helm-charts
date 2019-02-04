@@ -41,7 +41,6 @@
         INSERT INTO orders (id, created, product, qty, price) VALUES (3, now(), 'FU-KOSPI-C-20150201-100', 200, 150);
 
         SELECT * FROM orders;
-      timeout: 5s
 
 - name: Deploy Helm Cassandra Source Distributed Connector
   entries:   
@@ -60,10 +59,10 @@
           kubectl exec -i $POD -c kafka -- kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic cassandra-source --from-beginning'
       ignore_exit_code: true
       stdout_has: [ 'OP-DAX-P-20150201-95.7', 'OP-DAX-C-20150201-100', 'FU-KOSPI-C-20150201-100' ]
-      timeout: 20s
+      timeout: 30s
 
 - name: Cleanup K8
-  entries:   
+  entries:
     - name: Delete Deployments
       command: >
         kubectl delete deployments --all

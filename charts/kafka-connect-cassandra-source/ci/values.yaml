@@ -85,18 +85,6 @@ errorPolicy: THROW
 # retryInterval The time in milliseconds between retries. type: INT importance: MEDIUM
 retryInterval: 60000
 
-# importAllowFiltering Enable ALLOW FILTERING in incremental selects. type: BOOLEAN importance: MEDIUM
-importAllowFiltering: true
-
-# sliceDuration Duration to query for in target Cassandra table. Used to restrict query timestamp span"
-sliceDuration: 10000
-
-# sliceDelayMs The delay between the current time and the time range of the query. Used to insure all of the data in the time slice is available
-sliceDelayMs: 30000
-
-# initialOffset The initial timestamp to start querying in Cassandra from (yyyy-MM-dd HH:mm:ss.SSS'Z'). Default 1900-01-01 00:00:00.0000000Z
-initialOffset: "1900-01-01 00:00:00.0000000Z"
-
 # deleteEnabled allow deletion of records in cassandra
 deleteEnabled: false
 

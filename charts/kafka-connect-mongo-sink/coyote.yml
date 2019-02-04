@@ -19,6 +19,15 @@
   vars:
     POD_NAME: kubectl get pods --field-selector=status.phase=Running -l=app=test-kafka-connect-mongo -o jsonpath='{.items[0].metadata.name}'
 
+- name: Prepare topic
+  entries:   
+    - name: Create Sink Topic
+      command: >-
+        bash -c '
+          POD=`%POD_NAME%`
+          kubectl exec -i $POD -c kafka -- kafka-topics --zookeeper $ADV_HOST:2181 --topic mongo-sink --partitions 1 --replication-factor 1 --create'
+      timeout: 5s
+
 - name: Deploy Helm mongo Sink Distributed Connector
   entries:   
     - name: Run helm chart
@@ -43,13 +52,13 @@
     - name: Verify entries
       command: >
         bash -c '
-          POD=`kubectl get pods -l=app=test-kafka-connect-mongo -o jsonpath='{.items[0].metadata.name}'`
+          POD=`%POD_NAME%`
           kubectl exec -i $POD -c mongo -- mongo'
       stdout_has: [ 'OP-DAX-P-20150201-95.7', 'OP-DAX-C-20150201-100', 'FU-DATAMOUNTAINEER-20150201-100', 'FU-KOSPI-C-20150201-100' ]
       stdin: |
         use landoop
         db.orders.find()
-      timeout: 10s
+      timeout: 45s
 
 - name: Cleanup K8
   entries:   
@@ -61,4 +70,4 @@
         kubectl delete statefulsets.apps --all
     - name: Delete Service
       command: >
-        kubectl delete services kafka mongo
+        kubectl delete services --all
