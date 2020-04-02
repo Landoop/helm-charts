@@ -102,6 +102,11 @@ lenses:
     logBackOpts:
     #performanceOpts are any jvm tuning options to add to the jvm
     performanceOpts:
+    # base64 encoded truststore data
+    trustStoreFileData: |-
+
+    # trust store password
+    trustStorePassword:
 
   # broker details
   ## Brokers should be behind a service, if so set one entry in the hosts
@@ -170,6 +175,7 @@ lenses:
         # metrics:
         #   type: "JMX"
         #   port: 9102
+        #   protocol:
         #   username:
         #   password:
         #   ssl:
@@ -180,6 +186,7 @@ lenses:
   schemaRegistries:
     enabled: true
     mode:
+    topic:
     hosts:
       - host: schema-registry
         protocol: http
@@ -190,6 +197,7 @@ lenses:
         # metrics:
         #   type: "JMX"
         #   port: 9102
+        #   protocol:
         #   username:
         #   password:
         #   ssl:
@@ -229,6 +237,7 @@ lenses:
             # metrics:
             #   type: "JMX"
             #   port: 9102
+            #   protocol:
             #   username:
             #   password:
             #   ssl:
