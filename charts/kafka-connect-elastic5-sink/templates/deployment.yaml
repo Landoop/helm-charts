@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "fullname" . }}
@@ -11,6 +11,9 @@ metadata:
     lenses.io/app.type: lenses-connector
     lenses.io/pipeline: {{ .Values.monitoring.pipeline | quote }}    
 spec:
+  selector:
+    matchLabels:
+      app: {{ include "fullname" . | quote }}
   replicas: {{ .Values.replicaCount }}
   serviceName: {{ template "fullname" . }}-headless
   podManagementPolicy: {{ .Values.podManagementPolicy }}
@@ -231,9 +234,9 @@ spec:
         - name: CONNECTOR_CONNECT_ELASTIC_USE_HTTP
           value: {{ .Values.useHttp | quote }} 
 
-        # extra config
-        {{- if .Values.extraEnv }}
-        {{- range $key, $value := .Values.extraEnv }}
+        # extra connector properties
+        {{- if .Values.transforms }}
+        {{- range $key, $value := .Values.transforms }}
         - name: CONNECTOR_{{ $key | upper }}
           value: {{  $value | quote }}
         {{- end }}

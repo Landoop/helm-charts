@@ -4,3 +4,6 @@ packages
 landoop
 *.compare
 .history/
+*.gpg
+build/
+charts/*/coyote.html

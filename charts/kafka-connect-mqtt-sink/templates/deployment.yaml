@@ -1,23 +1,27 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "fullname" . }}
   labels:
-    app: {{ include "fullname" . }}
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    release: "{{ .Release.Name }}"
-    heritage: "{{ .Release.Service }}"
+    app: {{ include "fullname" . | quote }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
     lenses.io/app: {{ include "fullname" . }}    
     lenses.io/app.type: lenses-connector
     lenses.io/pipeline: {{ .Values.monitoring.pipeline | quote }}    
 spec:
+  selector:
+    matchLabels:
+      app: {{ include "fullname" . | quote }}
   replicas: {{ .Values.replicaCount }}
   serviceName: {{ template "fullname" . }}-headless
   podManagementPolicy: {{ .Values.podManagementPolicy }}
   template:
     metadata:
       labels:
-        app: {{ include "fullname" . }}
+        app: {{ include "fullname" . | quote }}
+        release: {{ .Release.Name | quote }}
         hostPort: {{ .Values.restPort | quote }}
         containerPort: {{ .Values.restPort | quote }}
         lenses.io/app: {{ include "fullname" . }}
@@ -118,8 +122,12 @@ spec:
           value: "connect-{{ .Values.clusterName }}-statuses"
         - name: CONNECT_KEY_CONVERTER
           value: "{{ .Values.keyConverter }}"
+        - name: CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE
+          value: "{{ .Values.keyConverterSchemasEnable }}"
         - name: CONNECT_VALUE_CONVERTER
           value: "{{ .Values.valueConverter }}"
+        - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
+          value: "{{ .Values.valueConverterSchemasEnable }}"
         - name: CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL
           value: {{ include "registries" . | quote }}
         - name: CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL
@@ -245,7 +253,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: {{ include "fullname" . }}
-              key:  "password"
+              key:  "connect.mqtt.password"
         - name: CONNECTOR_CONNECT_MQTT_HOSTS
           value: {{ .Values.hosts | quote }} 
         - name: CONNECTOR_CONNECT_MQTT_CLIENT_ID
@@ -258,6 +266,8 @@ spec:
           value: {{ .Values.pollingTimeout | quote }}
         - name: CONNECTOR_CONNECT_MQTT_SERVICE_QUALITY
           value: {{ .Values.serviceQuality | quote }}
+        - name: CONNECTOR_CONNECT_MQTT_RETAINED_MESSAGES
+          value: {{ .Values.retainedMessages | quote }}
         - name: CONNECTOR_CONNECT_MQTT_KEEP_ALIVE
           value: {{ .Values.keepAlive | quote }}
         - name: CONNECTOR_CONNECT_MQTT_RETRY_INTERVAL

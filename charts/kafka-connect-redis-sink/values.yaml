@@ -4,7 +4,7 @@ replicaCount: 1
 secretsRef: "__REQUIRED__"
 image:
   repository: streamreactor/redis
-  tag: 1.2.1.7
+  tag: 1.2.3
   pullPolicy: IfNotPresent
 
 # Resource management
@@ -126,3 +126,23 @@ errorPolicy: THROW
 # enabled Enables the output for how many records have been processed type: BOOLEAN importance: MEDIUM
 progressEnabled: true
 
+# sslEnabled enables ssl mounts
+sslEnabled: false
+
+# trustStoreType the type of the trustore
+trustStoreType:
+
+# truststorePassKey The password  key of the trust store in the secret
+trustStorePass:
+
+# trustStoreFileData is the base64 contents of the truststore file
+trustStoreFileData: |-
+
+# keyStoreType the type of the trustore
+keyStoreType:
+
+# keystorePassKey The password key of the key store in the secret
+keyStorePass:
+
+# keyStoreFileData is the base64 contents of the keystore file
+keyStoreFileData: |-

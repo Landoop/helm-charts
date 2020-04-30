@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "fullname" . }}
@@ -11,6 +11,9 @@ metadata:
     lenses.io/app.type: lenses-connector
     lenses.io/pipeline: {{ .Values.monitoring.pipeline | quote }}
 spec:
+  selector:
+    matchLabels:
+      app: {{ include "fullname" . | quote }}
   replicas: {{ .Values.replicaCount }}
   serviceName: {{ template "fullname" . }}-headless
   podManagementPolicy: {{ .Values.podManagementPolicy }}
@@ -28,11 +31,23 @@ spec:
         prometheus.io/port: {{ .Values.monitoring.port | quote }}
         prometheus.io/path: {{ .Values.monitoring.path | quote }}
     spec:
-      {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled }}
-      volumes:
-        - name: kafka-secrets
+      {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled .Values.sslEnabled }}
+      volumes:                
+        {{- if .Values.sslEnabled }}
+        - name: connector-secrets
           secret:
             secretName: {{ include "fullname" . }}
+            defaultMode: 256
+            items:
+              - key: client.keystore.jks
+                path: client.keystore.jks
+              - key: client.truststore.jks
+                path: client.truststore.jks
+        {{- end }}
+        {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled}}
+        - name: kafka-secrets
+          secret:
+            secretName: {{ include "fullname" . }}-kafka-secrets
             defaultMode: 256
             items:
               {{- if .Values.kafka.ssl.enabled }}
@@ -52,6 +67,7 @@ spec:
           configMap:
             name: {{ include "fullname" . | quote }}
         {{- end }}
+        {{- end }}
       {{- end }}
       containers:
       - name: {{ .Chart.Name }}
@@ -67,8 +83,13 @@ spec:
           timeoutSeconds: 5
         resources:
 {{ toYaml .Values.resources | indent 10 }}
-        {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled }}
-        volumeMounts:
+        {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled .Values.sslEnabled}}
+        volumeMounts: 
+          {{- if .Values.sslEnabled }}
+          - name: connector-secrets
+            mountPath: "/mnt/connector-secrets"
+          {{- end }}
+          {{- if or .Values.kafka.ssl.enabled .Values.kafka.sasl.enabled }}
           - name: kafka-secrets
             mountPath: "/mnt/secrets"
           {{- if eq .Values.kafka.sasl.mechanism "GSSAPI" }}
@@ -76,7 +97,8 @@ spec:
             mountPath: "/etc/krb5.conf"
             subPath: "krb5.conf"
           {{- end }}
-        {{- end }}
+          {{- end }}
+        {{- end }} 
         env:
         # JVM Heap Allowance
         - name: KAFKA_HEAP_OPTS
@@ -241,7 +263,29 @@ spec:
           value: {{ .Values.errorPolicy | quote }}
         - name: CONNECTOR_CONNECT_PROGRESS_ENABLED
           value: {{ .Values.progressEnabled | quote }}
-        
+        - name: CONNECTOR_CONNECT_REDIS_SSL_ENABLED
+          value: {{ .Values.sslEnabled  | quote }}
+        {{- if .Values.sslEnabled }}
+        - name: SSL_TRUSTSTORE_TYPE_CONFIG
+          value: {{ .Values.trustStoreType}}
+        - name: SSL_TRUSTSTORE_LOCATION_CONFIG
+          value: "/mnt/connector-secrets/client.truststore.jks"
+        - name: SSL_TRUSTSTORE_PASSWORD_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "fullname" . }}
+              key:  "connect.redis.truststore.pass"
+        - name: SSL_KEYSTORE_TYPE_CONFIG
+          value: {{ .Values.keyStoreType}}
+        - name: SSL_KEYSTORE_LOCATION_CONFIG
+          value: "/mnt/connector-secrets/client.keystore.jks"
+        - name: SSL_KEYSTORE_PASSWORD_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "fullname" . }}
+              key:  "connect.redis.keystore.pass"
+        {{- end }}
+
         # override config
         {{- if .Values.overrideEnv }}
         {{- range $key, $value := .Values.overrideEnv }}

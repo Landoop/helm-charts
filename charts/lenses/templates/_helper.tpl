@@ -14,14 +14,6 @@ We truncate at 24 chars because some Kubernetes name fields are limited to this 
 {{- printf "%s" .Release.Name -}}
 {{- end -}}
 
-{{- define "ingressPath" -}}
-{{- if .Values.ingress.path -}}
-{{- .Values.ingress.path -}}
-{{- else -}}
-{{- include "fullname" . -}}
-{{- end -}}
-{{- end -}}
-
 {{- define "metricTopic" -}}
 {{- if .Values.lenses.topics.suffix -}}
 _kafka_lenses_metrics_{{ .Values.lenses.topics.suffix }}
@@ -167,6 +159,7 @@ PLAINTEXT
 {{- end -}}
 
 {{- define "kafkaMetrics" -}}
+{{- if and .Values.lenses.kafka.metrics .Values.lenses.kafka.metrics.enabled -}}
 {
   type: {{ default "JMX" .Values.lenses.kafka.metrics.type | quote}},
   ssl: {{ default false .Values.lenses.kafka.metrics.ssl}},
@@ -177,18 +170,28 @@ PLAINTEXT
   password: {{ .Values.lenses.kafka.metrics.password | quote}},
   {{- end }}
   {{- if .Values.lenses.kafka.metrics.port}}
-  default.port: {{ .Values.lenses.kafka.metrics.port }},
+  default.port: {{ .Values.lenses.kafka.metrics.port }}
   {{- else}}
   port: [
+    {{- if eq .Values.lenses.kafka.metrics.type "AWS" }}
+    {{ range $index, $element := .Values.lenses.kafka.metrics.ports }}
+    {{- if not $index -}}{id: {{$element.id}}, url: "{{$element.url}}"}
+    {{- else}},
+    {id: {{$element.id}}, url: "{{$element.url}}"}
+    {{- end}}
+    {{- end}}
+    {{- else -}}
     {{ range $index, $element := .Values.lenses.kafka.metrics.ports }}
     {{- if not $index -}}{id: {{$element.id}}, port: {{$element.port}}, host: "{{$element.host}}"}
     {{- else}},
     {id: {{$element.id}}, port: {{$element.port}}, host: "{{$element.host}}"}
     {{- end}}
-  {{- end}}
+    {{- end}}
+    {{- end }}
   ]
   {{- end}}
 }
+{{- end -}}
 {{- end -}}
 
 {{- define "kafkaSchemaBasicAuth" -}}
@@ -210,20 +213,17 @@ PLAINTEXT
 ]  
 {{- end -}}
 
-{{- define "alertManagers" -}}
-{{ range $index, $element := .Values.lenses.alertManagers.endpoints }}
-  {{- if $index -}},{{$element.protocol}}://{{$element.host}}:{{$element.port}}
-  {{- else -}}{{$element.protocol}}://{{$element.host}}:{{$element.port}}
-  {{- end -}}
-  {{end}}
-{{- end -}}
-
 {{- define "zookeepers" -}}
+{{- if .Values.lenses.zookeepers.enabled -}}
 [
   {{ range $index, $element := .Values.lenses.zookeepers.hosts }}
   {{- if not $index -}}{url: "{{$element.host}}:{{$element.port}}"
   {{- if $element.metrics -}}, metrics: {
-    url: "{{$element.host}}:{{$element.metrics.port}}", 
+    {{- if eq $element.metrics.type "JMX" -}}
+    url: "{{$element.host}}:{{$element.metrics.port}}",
+    {{- else }}
+    url: "{{$element.protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+    {{- end }} 
     type: "{{$element.metrics.type}}",
     ssl: {{default false $element.metrics.ssl}},
     {{- if $element.metrics.username -}}
@@ -236,7 +236,11 @@ PLAINTEXT
   {{- else}},
   {url: "{{$element.host}}:{{$element.port}}"
   {{- if $element.metrics -}}, metrics: {
-    url: "{{$element.host}}:{{$element.metrics.port}}", 
+    {{- if eq $element.metrics.type "JMX" -}}
+    url: "{{$element.host}}:{{$element.metrics.port}}",
+    {{- else }}
+    url: "{{$element.protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+    {{- end }}
     type: "{{default "JMX" $element.metrics.type}}",
     ssl: {{default false $element.ssl}},
     {{- if $element.metrics.username -}}
@@ -248,7 +252,8 @@ PLAINTEXT
   }{{- end}}}
   {{- end}}
 {{- end}}
-]  
+]
+{{- end -}}
 {{- end -}}
 
 {{- define "registries" -}}
@@ -257,8 +262,12 @@ PLAINTEXT
   {{ range $index, $element := .Values.lenses.schemaRegistries.hosts }}
   {{- if not $index -}}{url: "{{$element.protocol}}://{{$element.host}}:{{$element.port}}{{$element.path}}"
   {{- if $element.metrics -}}, metrics: {
-    url: "{{$element.host}}:{{$element.metrics.port}}", 
-    type: "{{$element.metrics.type}}",
+    {{- if eq $element.metrics.type "JMX" -}}
+    url: "{{$element.host}}:{{$element.metrics.port}}",
+    {{- else }}
+    url: "{{$element.protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+    {{- end }}
+    type: "{{default "JMX" $element.metrics.type}}",
     ssl: {{default false $element.metrics.ssl}}
     {{- if $element.metrics.username -}},
     user: {{$element.metrics.username | quote}},
@@ -270,7 +279,11 @@ PLAINTEXT
   {{- else}},
   {url: "{{$element.protocol}}://{{$element.host}}:{{$element.port}}"
   {{- if $element.metrics -}}, metrics: {
-    url: "{{$element.host}}:{{$element.metrics.port}}", 
+    {{- if eq $element.metrics.type "JMX" -}}
+    url: "{{$element.host}}:{{$element.metrics.port}}",
+    {{- else }}
+    url: "{{$element.protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+    {{- end }}
     type: "{{default "JMX" $element.metrics.type}}",
     ssl: {{default false $element.ssl}}
     {{- if $element.metrics.username -}},
@@ -306,7 +319,11 @@ PLAINTEXT
         {{- if not $index -}}
         {url: "{{$protocol}}://{{$element.host}}:{{$port}}"
         {{- if $element.metrics -}}, metrics: {
-          url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- if eq $element.metrics.type "JMX" -}}
+        url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- else }}
+        url: "{{$protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+        {{- end }}
           type: "{{default "JMX" $element.metrics.type}}",
           ssl: {{default false $element.metrics.ssl}},
           {{- if $element.metrics.username -}}
@@ -319,7 +336,11 @@ PLAINTEXT
         {{- else -}},
         {url: "{{$protocol}}://{{$element.host}}:{{$port}}"
         {{- if $element.metrics -}}, metrics: {
-          url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- if eq $element.metrics.type "JMX" -}}
+        url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- else }}
+        url: "{{$protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+        {{- end }}
           type: "{{default "JMX" $element.metrics.type}}",
           ssl: {{default false $element.metrics.ssl}},
           {{- if $element.metrics.username -}}
@@ -347,7 +368,11 @@ PLAINTEXT
         {{- if not $index -}}
         {url: "{{$protocol}}://{{$element.host}}:{{$port}}"
         {{- if $element.metrics -}}, metrics: {
-          url: "{{$element.host}}:{{$element.metrics.port}}", 
+        {{- if eq $element.metrics.type "JMX" -}}
+        url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- else }}
+        url: "{{$protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+        {{- end }}
           type: "{{default "JMX" $element.metrics.type}}",
           ssl: {{default false $element.metrics.ssl}},
           {{- if $element.metrics.username -}}
@@ -360,7 +385,11 @@ PLAINTEXT
         {{- else -}},
         {url: "{{$protocol}}://{{$element.host}}:{{$port}}"
         {{- if $element.metrics -}}, metrics: {
-          url: "{{$element.host}}:{{$element.metrics.port}}", 
+        {{- if eq $element.metrics.type "JMX" -}}
+        url: "{{$element.host}}:{{$element.metrics.port}}",
+        {{- else }}
+        url: "{{$protocol}}://{{$element.host}}:{{$element.metrics.port}}",
+        {{- end }}
           type: "{{default "JMX" $element.metrics.type}}",
           ssl: {{default false $element.metrics.ssl}},
           {{- if $element.metrics.username -}}
@@ -381,168 +410,42 @@ PLAINTEXT
 {{- end -}}
 
 
-{{- define "userGroups" -}}
+{{- define "alertPlugins" -}}
+{{- if .Values.lenses.alerts.plugins -}}
 [
-  {{ range $index, $element := .Values.lenses.security.groups}}
-  {{- if not $index -}}
-  {{- $topic := index $element "topic" -}}
-    {"name": "{{$element.name}}", "roles":[
-      {{- range $index, $element := index $element "roles" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]
-      {{- if $topic }}, "topic": {"whitelist":[
-          {{- range $index, $element := index $topic "whitelist" -}}
-            {{- if not $index -}} "{{$element}}"
-            {{- else -}}, "{{$element}}"
-            {{- end -}}
-          {{- end -}}], "blacklist":[
-          {{- range $index, $element := index $topic "blacklist" -}}
-            {{- if not $index -}} "{{$element}}"
-            {{- else -}}, "{{$element}}"
-            {{- end -}}
-          {{- end -}}]}
-      {{- end -}}}
-  {{- else -}},
-  {{- $topic := index $element "topic" -}}
-  {"name": "{{$element.name}}", "roles":[
-      {{- range $index, $element := index $element "roles" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]
-      {{- if $topic }}, "topic": {"whitelist":[
-          {{- range $index, $element := index $topic "whitelist" -}}
-            {{- if not $index -}} "{{$element}}"
-            {{- else -}}, "{{$element}}"
-            {{- end -}}
-          {{- end -}}], "blacklist":[
-          {{- range $index, $element := index $topic "blacklist" -}}
-            {{- if not $index -}} "{{$element}}"
-            {{- else -}}, "{{$element}}"
-            {{- end -}}
-          {{- end -}}]}
-      {{- end -}}}
-  {{- end -}}
+  {{ range $index, $element := .Values.lenses.alerts.plugins }}
+  {{- if not $index -}}{class: "{{$element.class}}", config: {{$element.config}}}
+  {{- else}},{class: "{{$element.class}}", config: {{$element.config}}}{{- end }}
   {{- end }}
 ]
 {{- end -}}
-
-
-
-{{- define "users" -}}
-{{- if .Values.lenses.security.users -}}
-[
-  {{ range $index, $element := .Values.lenses.security.users}}
-  {{- if not $index -}}
-  {{- $topic := index $element "topic" -}}
-    {"username": "{{$element.username}}", "displayName": "{{$element.displayname}}", "password": "{{$element.password}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}]
-    }
-  {{- else -}},
-  {{- $topic := index $element "topic" }}
-  {"username": "{{$element.username}}", "displayName": "{{$element.displayname}}", "password": "{{$element.password}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}]
-      }
-  {{- end -}}
-  {{- end }}
-]
-{{end -}}
 {{- end -}}
-
-{{- define "serviceAccounts" -}}
-{{- if .Values.lenses.security.serviceAccounts -}}
-[
-  {{ range $index, $element := .Values.lenses.security.serviceAccounts}}
-  {{- if not $index -}}
-    {"username": "{{$element.username}}", "token": "{{$element.token}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]}
-  {{- else -}},
-  {"username": "{{$element.username}}", "token": "{{$element.token}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]}
-  {{- end -}}
-  {{- end }}
-]
-{{end -}}
-{{- end -}}
-
 
 {{- define "kerberos" -}}
-{{- if eq .Values.lenses.security.mode "KERBEROS" }}
+{{- if .Values.lenses.security.kerberos.enabled }}
 lenses.security.kerberos.service.principal={{ .Values.lenses.security.kerberos.servicePrincipal | quote }}
 lenses.security.kerberos.keytab=/mnt/secrets/lenses.keytab
 lenses.security.kerberos.debug={{ .Values.lenses.security.kerberos.debug | quote }}
-lenses.security.mappings=[
-  {{ range $index, $element := .Values.lenses.security.kerberos.mappings}}
-  {{- if not $index -}}
-    {"username": "{{$element.username}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]}
-  {{- else -}},
-  {"username": "{{$element.username}}", "groups":[
-      {{- range $index, $element := index $element "groups" -}}
-        {{- if not $index -}} "{{$element}}"
-        {{- else -}}, "{{$element}}"
-        {{- end -}}
-      {{- end -}}
-      ]}
-  {{- end -}}
-  {{- end }}
-]
 {{end -}}
 {{- end -}}
 
 {{- define "securityConf" -}}
-lenses.security.mode={{ .Values.lenses.security.mode }} 
-{{ if .Values.lenses.security.users -}}
-lenses.security.users={{ include "users" . }}
-{{- end }}
-
-{{- if .Values.lenses.security.groups -}}
-lenses.security.groups={{ include "userGroups" . }}
+{{- if .Values.lenses.security.defaultUser -}}
+lenses.security.user={{ .Values.lenses.security.defaultUser.username | quote }}
+lenses.security.password={{ .Values.lenses.security.defaultUser.password | quote }}
 {{- end -}}
-
-{{ if .Values.lenses.security.serviceAccounts }}
-lenses.security.service.accounts={{ include "serviceAccounts" . }}
-{{- end -}}
-
-{{- if eq .Values.lenses.security.mode "LDAP" }}
-lenses.security.ldap.url={{ .Values.lenses.security.ldap.url }}
-lenses.security.ldap.base={{ .Values.lenses.security.ldap.base }}
-lenses.security.ldap.user={{ .Values.lenses.security.ldap.user }}
-lenses.security.ldap.password={{ .Values.lenses.security.ldap.password }}
-lenses.security.ldap.filter={{ .Values.lenses.security.ldap.filter }}
-lenses.security.ldap.plugin.class={{ .Values.lenses.security.ldap.plugin.class }}
-lenses.security.ldap.plugin.memberof.key={{ .Values.lenses.security.ldap.plugin.memberofKey }}
-lenses.security.ldap.plugin.group.extract.regex={{ .Values.lenses.security.ldap.plugin.groupExtractRegex }} 
-lenses.security.ldap.plugin.person.name.key={{ .Values.lenses.security.ldap.plugin.personNameKey }}
+{{- if .Values.lenses.security.ldap.enabled }}
+lenses.security.ldap.url={{ .Values.lenses.security.ldap.url | quote }}
+lenses.security.ldap.base={{ .Values.lenses.security.ldap.base | quote }}
+lenses.security.ldap.user={{ .Values.lenses.security.ldap.user | quote }}
+lenses.security.ldap.password={{ .Values.lenses.security.ldap.password | quote }}
+lenses.security.ldap.filter={{ .Values.lenses.security.ldap.filter | quote }}
+lenses.security.ldap.plugin.class={{ .Values.lenses.security.ldap.plugin.class | quote }}
+lenses.security.ldap.plugin.memberof.key={{ .Values.lenses.security.ldap.plugin.memberofKey | quote }}
+lenses.security.ldap.plugin.group.extract.regex={{ .Values.lenses.security.ldap.plugin.groupExtractRegex | quote }}
+lenses.security.ldap.plugin.person.name.key={{ .Values.lenses.security.ldap.plugin.personNameKey | quote }}
 {{- end -}} 
-{{- if eq .Values.lenses.security.mode "KERBEROS" -}}
+{{- if .Values.lenses.security.kerberos.enabled -}}
 {{ include "kerberos" .}}
 {{- end -}}
 {{- end -}}

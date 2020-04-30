@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: streamreactor/elastic5
-  tag: 1.2.1.7
+  tag: 1.2.3
   pullPolicy: IfNotPresent
 
 # Resource management
@@ -97,7 +97,13 @@ topics: "__REQUIRED__"
 # kcql KCQL expression describing field selection and routes. type: STRING importance: HIGH
 kcql: "__REQUIRED__"
 
-extraEnv: {}
+# A dictionary allowing to specify SMT's, e.g.
+# transforms:
+#   transforms: "weeklysplit"
+#   transforms_weeklysplit_type: "org.apache.kafka.connect.transforms.TimestampRouter"
+#   transforms_weeklysplit_timestamp_format: "yyyy-ww"
+#   transforms_weeklysplit_topic_format: "${topic}-${timestamp}"
+transforms:
 
 # batchSize How many records to process at one time. As records are pulled from Kafka it can be 100k+ which will not be feasible to throw at Elastic search at once type: INT importance: MEDIUM
 batchSize: 4000
