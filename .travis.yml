@@ -37,7 +37,7 @@ deploy:
   - provider: script
     script: ./package.sh
     on:
-      branch: master
+      branch: "2.3"
   - provider: pages
     local-dir: build
     skip-cleanup: true
@@ -45,4 +45,4 @@ deploy:
     github-token: $GITHUB_TOKEN
     committer-from-gh: true
     on:
-      branch: master
+      branch: "2.3"
