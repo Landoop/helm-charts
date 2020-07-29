@@ -80,6 +80,12 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.restPort }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.restPort }}
+          initialDelaySeconds: 90
+          periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /
