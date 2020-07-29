@@ -84,6 +84,7 @@ ingress:
   ##
   enabled: false
   host:
+  additionalHosts:
 
   # Ingress annotations
   annotations:
